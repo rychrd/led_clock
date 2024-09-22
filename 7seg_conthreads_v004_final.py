@@ -1,7 +1,7 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 
-import board
-from adafruit_ht16k33.segments import BigSeg7x4
+# import board
+# from adafruit_ht16k33.segments import BigSeg7x4
 
 from time import sleep
 import time
@@ -22,10 +22,10 @@ from osc4py3.oscmethod import *
 from osc4py3.as_comthreads import *
 
 # setup I2C display
-i2c = board.I2C()
-led = BigSeg7x4(i2c)
-led.brightness = 0.0
-led.colons[0] = True
+# i2c = board.I2C()
+# led = BigSeg7x4(i2c)
+# led.brightness = 0.0
+# led.colons[0] = True
 
 # init global states ;)
 RAMP = False
@@ -144,8 +144,8 @@ def format_time(clocktime):
 
 
 def update_clock(time):
-	led.print(format_time(time))
-
+#	led.print(format_time(time))
+	print(format_time(time))
 
 def time_to_int(t_string):
 	if len(t_string) < 4:
@@ -191,7 +191,7 @@ def minute_tick():
 def set_brightness(val):
 	global level
 	level = val
-	led.brightness = level
+#	led.brightness = level
 
 
 def flicker():
@@ -200,7 +200,7 @@ def flicker():
 
 	while FLK == True:
 		offset = random.random()*0.75 - level
-		led.brightness = abs(level + offset)
+#		led.brightness = abs(level + offset)
 		sleep(0.01)
 		d = int(random.random() * 10) % 4
 
@@ -208,7 +208,7 @@ def flicker():
 			set_brightness(start_level)
 			return
 
-		led.set_digit_raw(d, 0x00)
+#		led.set_digit_raw(d, 0x00)
 		sleep(0.06)
 		update_clock(now)
 	
@@ -218,12 +218,13 @@ def flicker():
 def display_control(bool):
 	global now
 	if bool == False:
-		led.colons[0] = False
+#		led.colons[0] = False
 		for d in range(4):
-			led.set_digit_raw(d, 0x00)
+#			led.set_digit_raw(d, 0x00)
+			pass
 	else:
 		update_clock(now)
-		led.colons[0] = True
+#		led.colons[0] = True
 
 def run_thread(func):
 	t = threading.Thread(target=func, daemon=True)
@@ -262,9 +263,9 @@ if __name__  ==  '__main__':
 			if BO == True:
 				update_clock(now)
 	finally:
-		led.brightness = 0
-		for d in range(4):
-			led.set_digit_raw(d, 0x00)
-		led.colons[0] = False
+#		led.brightness = 0
+#		for d in range(4):
+#			led.set_digit_raw(d, 0x00)
+#		led.colons[0] = False
 
 		osc_terminate()
