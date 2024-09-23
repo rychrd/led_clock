@@ -11,7 +11,7 @@ import threading
 from socket import gethostbyname
 from os import getlogin
 
-# Logging Setup
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("osc")
@@ -39,11 +39,10 @@ clock_id = 1
 ipaddr = gethostbyname('clocks.local')
 print(f"clock {clock_id} IP is {ipaddr}")
 
-# OSC callbacks before starting listener
-def msg_handler(*args):
+# OSC callbacks
 
-	if len(args) == 2:
-		s, x = args
+def msg_handler(s, x):
+	try:
 		global FLK
 
 		print(f"OSC message is {s} {x}")
@@ -67,6 +66,7 @@ def msg_handler(*args):
 
 		if s == "bo":
 			global BO
+			print(f'{s} {x}')
 			if x == 0:
 				BO = False
 				display_control(BO)
@@ -74,26 +74,31 @@ def msg_handler(*args):
 				BO = True
 				display_control(BO)
 
+		if s == "ramp":
+			if x == 0:
+				global RAMP
+				RAMP = x
 
-def msg_handler2(*args):
+	except OSCError as oe:
+		print(f"OSC error : {oe}")
 
-	print(args)
+def msg_handler2(s, x, y):
+
 	global RAMP
-	if args[0] == "ramp":
-		if len(args) == 2:
-			RAMP = args[1]
-		elif len(args) == 3:
-			global speed
-			RAMP = args[1]
-			speed = abs(0.999 - args[2])
+	if s == "ramp":
+		print(f'{s} on/off:{x} speed {y}')
+		global speed
+		RAMP = x
+		speed = abs(0.999 - y)
 
 
-# OSC init  
-OSCaddress = f"/clock/{clock_id}"
+# OSC IP and address mapping  
 osc_startup(logger=logger)
 
 osc_udp_server(ipaddr, 54321, 'clockpi_01')
 osc_broadcast_server('192.168.0.255', 54322, 'clock_bc')
+
+OSCaddress = f"/clock/{clock_id}"
 
 osc_method(OSCaddress, msg_handler)
 osc_method(OSCaddress, msg_handler2)
@@ -101,11 +106,7 @@ osc_method(OSCaddress, msg_handler2)
 # use a thread to process message
 def processOSC():
 	while True:
-		try:
-			osc_process()
-		except OSCInvalidRawError as re:
-			print(f'bad OSC formatting check address: {re}')
-			raise re
+		osc_process()
 		sleep(0.75)
 
 # time formatting
@@ -175,10 +176,13 @@ def flicker():
 	start_level = level
 
 	while FLK == True:
+#		print(FLK)
 		offset = random.random()*0.75 - level
 		led.brightness = abs(level + offset)
+#		print(abs(level+offset))
 		sleep(0.01)
 		d = int(random.random() * 10) % 4
+#		print(d)
 
 		if BO == False:
 			set_brightness(start_level)
@@ -211,12 +215,14 @@ def run_thread(func):
 
 if __name__  ==  '__main__':
 
-	run_thread(processOSC)
-	run_thread(minute_tick)
-	update_clock(now)
+	try:
+		run_thread(processOSC)
+		run_thread(minute_tick)
+
+		update_clock(now)
 
 # event loop - normal time or ramp.
-	try:
+
 		while True:
 			
 			while RAMP == True:

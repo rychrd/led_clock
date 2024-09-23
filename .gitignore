@@ -89,3 +89,7 @@ osc4py3/tests/__pycache__/udpbc.cpython-39.pyc
 osc4py3/tests/__pycache__/udpmc.cpython-39.pyc
 clockpi/.DS_Store
 7seg_conthreads_v005.py
+.DS_Store
+.gitignore
+.gitignore
+.DS_Store

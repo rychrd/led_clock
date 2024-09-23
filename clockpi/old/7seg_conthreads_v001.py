@@ -27,7 +27,9 @@ FLK = False
 level = 0.0
 BO = True
 
-# OSC callbacks
+real_time = time.time()
+
+# OSC callback
 
 def msg_handler(s, x):
 	global FLK
@@ -36,20 +38,19 @@ def msg_handler(s, x):
 
 	if s == "time":
 		global now
-		if str(x).isdigit():
-			now = str(x)
-			update_clock(now)
+		now = str(x)
+		update_clock(now)
 
 	if s == "brightness":
 		set_brightness(x)
 
 
 	if s == "flicker":
-		if x == 1 and not FLK:
+		if x == 0:
+			FLK = False
+		else:
 			FLK = True
 			run_thread(flicker)
-		elif x == 0:
-			FLK = False
 
 	if s == "bo":
 		global BO
@@ -57,10 +58,7 @@ def msg_handler(s, x):
 		BO = x
 		display_control(x)
 
-	if s == "ramp":
-		if x == 0:
-			global RAMP
-			RAMP = x
+
 
 def msg_handler2(s, x, y):
 
@@ -73,7 +71,7 @@ def msg_handler2(s, x, y):
 
 # OSC IP and address mapping  
 osc_startup()
-osc_udp_server('192.168.4.46', 54321, 'clockpi_1')
+osc_udp_server('192.168.0.59', 54321, 'clockpi_1')
 
 OSCaddress = "/clock/1"
 
@@ -88,16 +86,15 @@ def processOSC():
 
 # time formatting
 def format_time(clocktime):
-#	try:
 	if len(clocktime) < 4:
 		clocktime = clocktime.rjust(4, '0')
 	_hh = clocktime[0:2]
 	_mm = clocktime[2:4]
-	if (not _hh.isdigit()) or (not _mm.isdigit()):		
-		return now
 	_hh = int(_hh) % 24
 	_mm = int(_mm) % 60
+
 	_time = f"{str(_hh).rjust(2, '0')}{str(_mm).rjust(2, '0')}"
+
 	return _time
 
 
@@ -129,7 +126,7 @@ def inc_time(hh, mm):
 	return hh, mm
 
 # ramps run the main thread - ie the clock is either ramping or just being a clock
-def ramp_time(speed = 0.995):
+def ramp_time(speed = 0.1):
 	global now
 	_now = time_to_int(now)
 	_now = inc_time(*_now)
