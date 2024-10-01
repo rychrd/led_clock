@@ -11,9 +11,6 @@ import threading
 from socket import gethostbyname
 from os import getlogin
 
-#from osc4py3.oscbuildparse import decode_packet
-
-
 # Logging Setup
 logging.basicConfig(
 	format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -32,7 +29,7 @@ from osc4py3.oscbuildparse import OSCInvalidRawError
 # led.brightness = 0.0
 # led.colons[0] = True
 
-# init global states ;)
+# init global states
 ramp = False
 now = "0000"
 speed = 0.1
@@ -64,14 +61,12 @@ print(f"clock {clock_id} IP is {ipaddr}")
 
 # OSC callbacks before starting listener
 def msg_handler(addr, *args):
-
 	print(f'OSC address is {addr}')
 	method = addr.split('/')[-1]
 	print(f'method is {method}')
 
 	if len(args) >= 1:
 		x = args[0]
-
 		print(f"OSC argument is {x}")
 
 		if method == "time":
@@ -84,10 +79,8 @@ def msg_handler(addr, *args):
 				bo = True
 				display_control(bo)
 
-
 		if method == "brightness":
 			set_brightness(x)
-
 
 		if method == "flicker":
 			global flk
@@ -96,8 +89,6 @@ def msg_handler(addr, *args):
 			elif not (flk and x):
 				flk = x
 				run_thread(flicker)
-
-
 
 		if method == "bo":
 			if x == 0:
@@ -134,19 +125,18 @@ def msg_handler2(addr, *args):
 				run_thread(ramp_loop)
 			else:
 				ramp = False
-    
 
 # OSC init  
-OSCaddress = f"/clock/{clock_id}/*"
-logger.info("osc address is %s", OSCaddress)
+OSC_address = f"/clock/{clock_id}/*"
+logger.info("osc address is %s", OSC_address)
 
 osc_startup(logger=logger)
 
 osc_udp_server(ipaddr, 54321, 'clockpi_05')
 # osc_broadcast_server('broadcast', 54322, 'clock_bc5')
 
-osc_method(OSCaddress, msg_handler, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_DATAUNPACK)
-osc_method(OSCaddress, msg_handler2, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_DATAUNPACK)
+osc_method(OSC_address, msg_handler, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_DATAUNPACK)
+osc_method(OSC_address, msg_handler2, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_DATAUNPACK)
 
 # try to catch errors in OSC processing threads
 def processOSC():
@@ -198,17 +188,6 @@ def inc_time(hh, mm):
 	return hh, mm
 
 
-# ramps run the main thread prior to v005(this one). This function isn't called.
-def ramp_time(speed = 0.995):
-    
-	global now
-	_now = time_to_int(now)
-	_now = inc_time(*_now)
-	sleep(speed)
-	now = _now
-	yield int_to_str(_now)
-
-
 def ramp_loop():
     
 	global speed
@@ -231,7 +210,6 @@ def minute_tick():
 			now = int_to_str(inc_time(*time_to_int(now)))
 
 
-# display control and fx
 def set_brightness(val):
     
 	global level
@@ -245,7 +223,7 @@ def flicker():
 	start_level = level
 
 	while flk:
-		offset = random.random()*0.75 - level
+		offset = random.random() * 0.75 - level
 #		led.brightness = abs(level + offset)
 		print('flickering...', end = '\n')
 		sleep(0.01)
