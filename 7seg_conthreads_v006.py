@@ -9,7 +9,6 @@ import random
 import logging
 import threading
 from socket import gethostbyname
-from os import getlogin
 
 # Logging Setup
 logging.basicConfig(
@@ -19,7 +18,6 @@ logger.setLevel(logging.DEBUG)
 
 import osc4py3.oscmethod as osm
 
-from osc4py3.oscmethod import *
 from osc4py3.as_comthreads import *
 from osc4py3.oscbuildparse import OSCInvalidRawError
 
@@ -40,7 +38,8 @@ lock = threading.Lock()
 
 # Get the clock id from local file
 filename = 'oscID'
-def read_oscID(file):
+
+def read_osc_id(file):
 	try:
 		with open(file, 'r') as f:
 			for line in f:
@@ -48,7 +47,7 @@ def read_oscID(file):
 					c_id = line.rstrip()
 				return c_id
 	except FileNotFoundError as fe:
-		print(f'ID file not found default id 1 used')
+		print(f'ID file not found - default id 1 used')
 		return 1
 
 clock_id = '1' #(read_oscID(filename))
@@ -72,6 +71,7 @@ def msg_handler(addr, *args):
 		if method == "time":
 			global bo
 			global now
+
 			if str(x).isdigit():
 				with lock:
 					now = str(x)
@@ -126,6 +126,7 @@ def msg_handler2(addr, *args):
 			else:
 				ramp = False
 
+
 # OSC init  
 OSC_address = f"/clock/{clock_id}/*"
 logger.info("osc address is %s", OSC_address)
@@ -139,21 +140,20 @@ osc_method(OSC_address, msg_handler, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_D
 osc_method(OSC_address, msg_handler2, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_DATAUNPACK)
 
 # try to catch errors in OSC processing threads
-def processOSC():
+def process_osc():
 	try:
 		osc_process()
 	except OSCInvalidRawError as re:
 		print(f'Raw error {re}')
   
 
-	
 # time formatting, time as string
-def format_time(clocktime):
-	if len(clocktime) < 4:
-		clocktime = clocktime.rjust(4, '0')
+def format_time(clock_time):
+	if len(clock_time) < 4:
+		clock_time = clock_time.rjust(4, '0')
    
-	_hh = clocktime[0:2]
-	_mm = clocktime[2:4]
+	_hh = clock_time[0:2]
+	_mm = clock_time[2:4]
 	_time = f"{_hh.rjust(2, '0')}{_mm.rjust(2, '0')}"
 	return _time
 
