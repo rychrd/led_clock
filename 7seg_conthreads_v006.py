@@ -19,7 +19,7 @@ logger.setLevel(logging.DEBUG)
 import osc4py3.oscmethod as osm
 
 from osc4py3.as_comthreads import *
-from osc4py3.oscbuildparse import OSCInvalidRawError
+from osc4py3.oscbuildparse import OSCInvalidRawError, OSCError
 
 # setup I2C display
 # i2c = board.I2C()
@@ -27,15 +27,16 @@ from osc4py3.oscbuildparse import OSCInvalidRawError
 # led.brightness = 0.0
 # led.colons[0] = True
 
-# init global states
-ramp = False
-now = "0000"
-speed = 0.1
-flk = False
-level = 0.0
-bo = True
-lock = threading.Lock()
+# global states
+class Glb:
+	ramp = False
+	now = "0000"
+	speed = 0.1
+	flk = False
+	level = 0.0
+	bo = True
 
+lock = threading.Lock()
 # Get the clock id from local file
 filename = 'oscID'
 
@@ -60,43 +61,39 @@ print(f"clock {clock_id} IP is {ipaddr}")
 
 # OSC callbacks before starting listener
 def msg_handler(addr, *args):
-	print(f'OSC address is {addr}')
+
 	method = addr.split('/')[-1]
-	print(f'method is {method}')
+	print(f'OSC address is {addr}, method is {method}')
 
 	if len(args) >= 1:
 		x = args[0]
 		print(f"OSC argument is {x}")
 
 		if method == "time":
-			global bo
-			global now
-
 			if str(x).isdigit():
 				with lock:
-					now = str(x)
-					update_clock(now)
+					Glb.now = str(x)
+					update_clock(Glb.now)
 				bo = True
-				display_control(bo)
+				display_control(Glb.bo)
 
 		if method == "brightness":
 			set_brightness(x)
 
 		if method == "flicker":
-			global flk
-			if flk and x:
+			if Glb.flk and x:
 				pass
-			elif not (flk and x):
-				flk = x
+			elif not (Glb.flk and x):
+				Glb.flk = x
 				run_thread(flicker)
 
 		if method == "bo":
 			if x == 0:
-				bo = False
-				display_control(bo)
+				Glb.bo = False
+				display_control(Glb.bo)
 			elif x == 1:
-				bo = True
-				display_control(bo)
+				Glb.bo = True
+				display_control(Glb.bo)
 
 		if method == "changeID":
 			write_oscID(filename, x)
@@ -105,26 +102,23 @@ def msg_handler(addr, *args):
 def msg_handler2(addr, *args):
 
 	method = addr.split('/')[-1]
-	global ramp
- 
 	if method == "ramp":
 		if len(args):
 			_ramp = args[0]
-			if (not ramp) and _ramp:
-				ramp = True
+			if (not Glb.ramp) and _ramp:
+				Glb.ramp = True
 				run_thread(ramp_loop)
 			else:
-				ramp = False
+				Glb.ramp = False
 		
 		elif len(args) == 2:
-			global speed
 			_ramp = args[0]
-			if (not ramp) and _ramp:
-				speed = abs(0.999 - args[1])
-				ramp = True			
+			if (not Glb.ramp) and _ramp:
+				Glb.speed = abs(0.999 - args[1])
+				Glb.ramp = True
 				run_thread(ramp_loop)
 			else:
-				ramp = False
+				Glb.ramp = False
 
 
 # OSC init  
@@ -160,7 +154,7 @@ def format_time(clock_time):
 
 def update_clock(time):
 #	led.print(format_time(time))
-	print(format_time(time), end='\r')
+	print(f"{format_time(time)}", end='\n')
 
 
 def time_to_int(t_string):
@@ -189,47 +183,38 @@ def inc_time(hh, mm):
 
 
 def ramp_loop():
-    
-	global speed
-	global now	
-
 	while ramp:
 		with lock:
-			now = int_to_str(inc_time(*time_to_int(now)))
+			Glb.now = int_to_str(inc_time(*time_to_int(Glb.now)))
    
 		print(f'ramping..\n{now} ', end='\r')
-		sleep(speed)
+		sleep(Glb.speed)
 
 
 def minute_tick():
-    
-	global now
 	while True:
 		sleep(60)
-		if not ramp:
-			now = int_to_str(inc_time(*time_to_int(now)))
+		if not Glb.ramp :
+			Glb.now = int_to_str(inc_time(*time_to_int(Glb.now)))
 
 
 def set_brightness(val):
-    
-	global level
-	level = val
+	Glb.level = val
 #	led.brightness = level
 
 
 def flicker():
 
-	global level, flk
-	start_level = level
+	start_level = Glb.level
 
-	while flk:
-		offset = random.random() * 0.75 - level
+	while Glb.flk:
+		offset = random.random() * 0.75 - Glb.level
 #		led.brightness = abs(level + offset)
 		print('flickering...', end = '\n')
 		sleep(0.01)
 		d = int(random.random() * 10) % 4
 
-		if not bo:
+		if not Glb.bo:
 			set_brightness(start_level)
 			return
 
@@ -241,15 +226,13 @@ def flicker():
 
 
 def display_control(bool):
-    
-	global now
 	if not bool:
 #		led.colons[0] = False
 		for d in range(4):
 #			led.set_digit_raw(d, 0x00)
 			pass
 	else:
-		update_clock(now)
+		update_clock(Glb.now)
 #		led.colons[0] = True
 
 
@@ -271,27 +254,28 @@ def write_oscID(file, id):
 # ------------------------ End of Functions ---------------------- #
 
 if __name__  ==  '__main__':
-
 	run_thread(minute_tick)
-	update_clock(now)
+	update_clock(Glb.now)
+
 	
 # event loop - wait for OSC commands and increment time.
-	try:
-		while True:
-			#	processOSC()
-				osc_process()
-				sleep(0.5)
-				if bo:
-					update_clock(now)
+	while True:
+		try:
+			osc_process()
+			sleep(0.5)
+			if Glb.bo :
+				update_clock(Glb.now)
+		except OSCError as rawerr:
+				print('bad OSC string {rawerr}')
+
      
-	except OSCInvalidRawError as re:
-				print('bad OSC string {re}')
+	#
     	
-	finally:
+	#	finally:
 #		led.brightness = 0
-		for d in range(4):
+#			for d in range(4):
 #			led.set_digit_raw(d, 0x00)
-			pass
+#				pass
 #		led.colons[0] = False
-		print('Exiting...')
-		osc_terminate()
+#			print('Exiting...')
+#			osc_terminate()
